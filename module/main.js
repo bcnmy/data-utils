@@ -2,12 +2,8 @@ const KafkaProducer = require('./kafka-producer');
 require('dotenv').config();
 
 const config = {
-  kafkaClientConfig: {
-    kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
-  },
-  schemaRegistryConfig: {
-    registryUrl: process.env.SCHEMA_REGISTRY_URL || 'localhost:8081',
-  },
+  kafkaUrl: process.env.KAFKA_HOST || 'localhost:9092',
+  schemaRegistryUrl: process.env.SCHEMA_REGISTRY_URL || 'http://localhost:8081',
 };
 
 const producer = new KafkaProducer(config);
@@ -15,7 +11,7 @@ const producer = new KafkaProducer(config);
 // Example schema
 const schema = JSON.stringify({
   type: 'record',
-  name: 'user',
+  name: 'test',
   fields: [
     { name: 'id', type: 'int' },
     { name: 'name', type: 'string' },
@@ -23,8 +19,8 @@ const schema = JSON.stringify({
   ],
 });
 
-// Register the schema
-producer.registerSchema(schema);
+// Example topic
+const topic = 'my-topic'; // Change this to your desired Kafka topic
 
 // Example data
 const data = {
@@ -32,9 +28,6 @@ const data = {
   name: 'John Doe',
   age: 30,
 };
-
-// Example topic
-const topic = 'my-topic'; // Change this to your desired Kafka topic
 
 // Push the data to Kafka with the schema
 producer.pushData(topic, schema, data);
