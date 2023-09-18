@@ -1,31 +1,35 @@
-const kafka = require('kafka-node');
+const { Kafka } = require('kafkajs')
 const avro = require('avsc');
-const { SchemaRegistry } = require('@kafkajs/confluent-schema-registry');
-
+const { SchemaRegistry, SchemaType } = require('@kafkajs/confluent-schema-registry')
 
 class KafkaProducer {
   constructor(config) {
-    this.producer = new kafka.Producer(new kafka.KafkaClient(config.kafkaClientConfig));
-    this.schemaRegistry = new SchemaRegistry(config.schemaRegistryConfig);
-  }
-
-  registerSchema(schemaString) {
-    this.schema = avro.parse(schemaString);
-  }
-
-  pushData(topic, schema, data) {
-    const payload = {
-      topic,
-      messages: this.schema.toBuffer(data), // Serialize data using the registered schema
-    };
-
-    this.producer.send([payload], (err, data) => {
-      if (err) {
-        console.error('Error sending message to Kafka:', err);
-      } else {
-        console.log('Message sent to Kafka:', data);
-      }
+    this.kafka = new Kafka({
+      brokers: [config.kafkaUrl],
+      clientId: 'data-utils',
     });
+    this.schemaRegistry = new SchemaRegistry({ host: config.schemaRegistryUrl });
+    this.producer = this.kafka.producer();
+    this.schemaId = 0
+  }
+
+  async pushData(topic, schema, data) {
+    const options = {
+        subject: `${topic}-value`
+    }
+    const { id } = await this.schemaRegistry.register({
+        type: SchemaType.AVRO,
+        schema,
+    }, options);
+    await this.producer.connect();
+    const outgoingMessage = {
+      value: await this.schemaRegistry.encode(id, data)
+    }
+    await this.producer.send({
+      topic: topic,
+      messages: [ outgoingMessage ]
+    })
+    await this.producer.disconnect();
   }
 }
 
